@@ -1,0 +1,13 @@
+Hi, my name is Felipe. 
+
+This is a Python project using Streamlit. 
+
+I'm trying to create a web app that allows users to upload a CSV file and then perform some visual analysis on the uploaded data. 
+
+Its a simple website, where the user will be able to upload a CSV file containing 4 variables:
+1. date
+2. id
+3. revenue
+4. user_id
+
+With that, some SQL queries are going to run and with streamlit we will plot a cohort graph, and some fancy timeline charts.
