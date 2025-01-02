@@ -46,26 +46,36 @@ def init_session_tables(session_id):
     if isinstance(conn, SupabaseConnection):
         table_name = f'revenue_data_{session_id}'
         
-        # Create table first
         try:
-            conn.table(table_name).create({
-                'id': 'serial primary key',
-                'transaction_date': 'date not null',
-                'transaction_id': 'varchar(255) not null unique',
-                'revenue': 'decimal(10,2) not null',
-                'user_id': 'varchar(255) not null',
-                'created_at': 'timestamp default current_timestamp'
-            }).execute()
+            # Create table using raw SQL
+            create_table_query = f"""
+                CREATE TABLE {table_name} (
+                    id SERIAL PRIMARY KEY,
+                    transaction_date DATE NOT NULL,
+                    transaction_id VARCHAR(255) NOT NULL UNIQUE,
+                    revenue DECIMAL(10,2) NOT NULL,
+                    user_id VARCHAR(255) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE INDEX idx_revenue_date_{session_id} 
+                    ON {table_name}(transaction_date);
+                CREATE INDEX idx_revenue_user_{session_id} 
+                    ON {table_name}(user_id);
+            """
             
-            # Create indices
-            conn.table(table_name).create_index('idx_revenue_date', ['transaction_date']).execute()
-            conn.table(table_name).create_index('idx_revenue_user', ['user_id']).execute()
+            from st_supabase_connection import execute_query
+            execute_query(
+                conn.table(table_name).select("*"),
+                {'query': create_table_query}
+            )
+            
         except Exception as e:
             # If table already exists, just clear it
             if '42P07' not in str(e):  # Not a "relation already exists" error
                 raise e
             
-            # Clear existing data
+            # Clear existing data using delete
             conn.table(table_name).delete().neq('id', 0).execute()
     else:
         # PostgreSQL connection code remains the same
