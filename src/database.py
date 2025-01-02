@@ -44,28 +44,31 @@ def init_session_tables(session_id):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
-        # Using Supabase connection
-        # Split into multiple statements since Supabase doesn't support multiple statements in one query
         table_name = f'revenue_data_{session_id}'
         
-        # Drop table if exists
-        conn.table(table_name).delete().execute()
-        
-        # Create table
-        conn.table(table_name).create({
-            'id': 'serial primary key',
-            'transaction_date': 'date not null',
-            'transaction_id': 'varchar(255) not null unique',
-            'revenue': 'decimal(10,2) not null',
-            'user_id': 'varchar(255) not null',
-            'created_at': 'timestamp default current_timestamp'
-        }).execute()
-        
-        # Create indices
-        conn.table(table_name).create_index('idx_revenue_date', ['transaction_date']).execute()
-        conn.table(table_name).create_index('idx_revenue_user', ['user_id']).execute()
+        # Create table first
+        try:
+            conn.table(table_name).create({
+                'id': 'serial primary key',
+                'transaction_date': 'date not null',
+                'transaction_id': 'varchar(255) not null unique',
+                'revenue': 'decimal(10,2) not null',
+                'user_id': 'varchar(255) not null',
+                'created_at': 'timestamp default current_timestamp'
+            }).execute()
+            
+            # Create indices
+            conn.table(table_name).create_index('idx_revenue_date', ['transaction_date']).execute()
+            conn.table(table_name).create_index('idx_revenue_user', ['user_id']).execute()
+        except Exception as e:
+            # If table already exists, just clear it
+            if '42P07' not in str(e):  # Not a "relation already exists" error
+                raise e
+            
+            # Clear existing data
+            conn.table(table_name).delete().neq('id', 0).execute()
     else:
-        # Using PostgreSQL connection
+        # PostgreSQL connection code remains the same
         cur = conn.cursor()
         try:
             cur.execute(f"""
