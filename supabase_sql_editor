@@ -1,0 +1,88 @@
+-- Base table structure for revenue data
+CREATE TABLE IF NOT EXISTS revenue_data_template (
+    id BIGSERIAL PRIMARY KEY,
+    transaction_date DATE NOT NULL,
+    transaction_id VARCHAR(255) NOT NULL UNIQUE,
+    revenue DECIMAL(10,2) NOT NULL,
+    user_id VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indices for better query performance
+CREATE INDEX IF NOT EXISTS idx_revenue_date_template 
+    ON revenue_data_template(transaction_date);
+CREATE INDEX IF NOT EXISTS idx_revenue_user_template 
+    ON revenue_data_template(user_id);
+
+-- Function to create session-specific tables
+CREATE OR REPLACE FUNCTION create_session_revenue_table(session_id TEXT)
+RETURNS void AS $$
+DECLARE
+    table_name TEXT;
+BEGIN
+    -- Generate table name with session ID
+    table_name := 'revenue_data_' || session_id;
+    
+    -- Create table using template structure
+    EXECUTE format('
+        CREATE TABLE IF NOT EXISTS %I (
+            LIKE revenue_data_template INCLUDING ALL
+        )', table_name);
+        
+    -- Create session-specific indices
+    EXECUTE format('
+        CREATE INDEX IF NOT EXISTS idx_revenue_date_%s 
+        ON %I(transaction_date)', 
+        session_id, table_name);
+        
+    EXECUTE format('
+        CREATE INDEX IF NOT EXISTS idx_revenue_user_%s 
+        ON %I(user_id)', 
+        session_id, table_name);
+END;
+$$ LANGUAGE plpgsql; 
+
+-- Function to cleanup old session tables
+CREATE OR REPLACE FUNCTION cleanup_old_session_tables(days_old INTEGER DEFAULT 7)
+RETURNS void AS $$
+DECLARE
+    table_name TEXT;
+BEGIN
+    FOR table_name IN 
+        SELECT tablename 
+        FROM pg_tables 
+        WHERE tablename LIKE 'revenue_data_%'
+        AND tablename != 'revenue_data_template'
+        AND created_at < (CURRENT_TIMESTAMP - (days_old || ' days')::INTERVAL)
+    LOOP
+        EXECUTE format('DROP TABLE IF EXISTS %I CASCADE', table_name);
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql; 
+
+-- Create a table to track when the cleanup was last run
+CREATE TABLE IF NOT EXISTS cleanup_log (
+    last_run TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Function to run cleanup if needed
+CREATE OR REPLACE FUNCTION check_cleanup_needed()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Run cleanup if it hasn't been run in the last 24 hours
+    IF NOT EXISTS (
+        SELECT 1 FROM cleanup_log 
+        WHERE last_run > CURRENT_TIMESTAMP - INTERVAL '24 hours'
+    ) THEN
+        PERFORM cleanup_old_session_tables();
+        INSERT INTO cleanup_log DEFAULT VALUES;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to check cleanup on each new session table creation
+CREATE OR REPLACE TRIGGER cleanup_check_trigger
+    AFTER INSERT ON revenue_data_template
+    FOR EACH ROW
+    EXECUTE FUNCTION check_cleanup_needed(); 

@@ -11,3 +11,55 @@ Its a simple website, where the user will be able to upload a CSV file containin
 4. user_id
 
 With that, some SQL queries are going to run and with streamlit we will plot a cohort graph, and some fancy timeline charts.
+
+# Supabase Integration Learnings with Streamlit
+
+## Connection Setup
+- Use `st.connection("supabase", type=SupabaseConnection)` for Streamlit-Supabase connection
+- Connection credentials go in `.streamlit/secrets.toml` with format:
+  - `[connections.supabase]`
+  - `SUPABASE_URL = "your-url"`
+  - `SUPABASE_KEY = "your-key"`
+
+## Database Operations
+- Tables must be created directly in Supabase SQL editor, not through the Python client
+- Use `.table()` instead of `.query()` for table operations
+- Use `execute_query()` helper function from st_supabase_connection for operations
+- Always set `ttl=0` to prevent caching issues
+
+## Session Management
+- Add session_id column to tables that need session isolation
+- Use Streamlit's session_state to manage session IDs
+- Generate unique session IDs with uuid4()
+- Filter all queries by session_id to isolate data between users
+- Add clear functionality per session
+
+## Table Operations
+- Use `.select("*")` for retrieving data
+- Use `.upsert()` for inserting/updating data
+- Use `.delete()` for removing data
+- Use `.eq()` for equality conditions
+- Chain operations like: `.table("mytable").select("*").eq('column', 'value')`
+
+## Best Practices
+- Create tables with session management columns from the start
+- Always validate data before inserting
+- Handle exceptions for database operations
+- Consider cleanup strategies for old session data
+- Use descriptive table and column names
+
+## Common Pitfalls
+- Can't create tables through Python client
+- No direct SQL query execution through Python client
+- Need to handle session management explicitly
+- Must create proper table structure before app deployment
+
+## Required Dependencies
+- st-supabase-connection
+- pandas (for data handling)
+- uuid (for session management)
+
+## Maintenance
+- Consider setting up cron jobs for data cleanup
+- Monitor database size and session accumulation
+- Regular cleanup of old session data 

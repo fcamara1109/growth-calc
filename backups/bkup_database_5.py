@@ -46,23 +46,23 @@ def init_session_tables(session_id):
     if isinstance(conn, SupabaseConnection):
         table_name = f'revenue_data_{session_id}'
         
+        # Create table first
         try:
-            # Use execute_query to call our create_session_revenue_table function
-            from st_supabase_connection import execute_query
-            execute_query(
-                conn.table('revenue_data_template').select("*"),
-                {
-                    'query': 'SELECT create_session_revenue_table(:session_id)',
-                    'session_id': session_id
-                }
-            )
+            conn.table(table_name).create({
+                'id': 'serial primary key',
+                'transaction_date': 'date not null',
+                'transaction_id': 'varchar(255) not null unique',
+                'revenue': 'decimal(10,2) not null',
+                'user_id': 'varchar(255) not null',
+                'created_at': 'timestamp default current_timestamp'
+            }).execute()
             
-            # Clear existing data if table already existed
-            conn.table(table_name).delete().neq('id', 0).execute()
-            
+            # Create indices
+            conn.table(table_name).create_index('idx_revenue_date', ['transaction_date']).execute()
+            conn.table(table_name).create_index('idx_revenue_user', ['user_id']).execute()
         except Exception as e:
-            # If it's not a "relation already exists" error, raise it
-            if '42P07' not in str(e):
+            # If table already exists, just clear it
+            if '42P07' not in str(e):  # Not a "relation already exists" error
                 raise e
             
             # Clear existing data
