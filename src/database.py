@@ -45,25 +45,25 @@ def init_session_tables(session_id):
     
     if isinstance(conn, SupabaseConnection):
         # Using Supabase connection
-        query = f"""
-            DROP TABLE IF EXISTS revenue_data_{session_id};
-            
-            CREATE TABLE revenue_data_{session_id} (
-                id SERIAL PRIMARY KEY,
-                transaction_date DATE NOT NULL,
-                transaction_id VARCHAR(255) NOT NULL UNIQUE,
-                revenue DECIMAL(10,2) NOT NULL,
-                user_id VARCHAR(255) NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-            
-            CREATE INDEX IF NOT EXISTS idx_revenue_date_{session_id} 
-                ON revenue_data_{session_id}(transaction_date);
-            CREATE INDEX IF NOT EXISTS idx_revenue_user_{session_id} 
-                ON revenue_data_{session_id}(user_id);
-        """
-        # Use execute_sql() method for raw SQL queries
-        conn.execute_sql(query)
+        # Split into multiple statements since Supabase doesn't support multiple statements in one query
+        table_name = f'revenue_data_{session_id}'
+        
+        # Drop table if exists
+        conn.table(table_name).delete().execute()
+        
+        # Create table
+        conn.table(table_name).create({
+            'id': 'serial primary key',
+            'transaction_date': 'date not null',
+            'transaction_id': 'varchar(255) not null unique',
+            'revenue': 'decimal(10,2) not null',
+            'user_id': 'varchar(255) not null',
+            'created_at': 'timestamp default current_timestamp'
+        }).execute()
+        
+        # Create indices
+        conn.table(table_name).create_index('idx_revenue_date', ['transaction_date']).execute()
+        conn.table(table_name).create_index('idx_revenue_user', ['user_id']).execute()
     else:
         # Using PostgreSQL connection
         cur = conn.cursor()
