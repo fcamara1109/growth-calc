@@ -101,13 +101,13 @@ def table_exists(cur, table_name):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
-        result = conn.query("""
-            SELECT EXISTS (
-                SELECT FROM pg_tables 
-                WHERE tablename = %s
-            );
-        """, values=[table_name]).execute()
-        return result.data[0]['exists']
+        # Using Supabase's REST API instead of raw SQL
+        try:
+            # Try to select 0 rows from the table - if it exists, this will succeed
+            conn.table(table_name).select("*").limit(0).execute()
+            return True
+        except Exception:
+            return False
     else:
         cur.execute("""
             SELECT EXISTS (
