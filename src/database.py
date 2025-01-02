@@ -1694,21 +1694,15 @@ def store_data(df):
                 for _, row in df.iterrows()
             ]
             
-            # Use execute_sql for Supabase
+            # Use new Supabase query format
             table_name = f'revenue_data_{st.session_state.session_id}'
-            placeholders = ','.join(['(:transaction_date, :transaction_id, :revenue, :user_id)'] * len(values))
-            query = f"""
-                INSERT INTO {table_name} 
-                (transaction_date, transaction_id, revenue, user_id)
-                VALUES {placeholders}
-            """
-            conn.execute_sql(query, values)
+            conn.table(table_name).insert(values).execute()
             
             return True, f"Successfully inserted {len(values)} records"
         except Exception as e:
             return False, f"Error storing data: {str(e)}"
     else:
-        # Using PostgreSQL connection
+        # PostgreSQL connection code remains the same
         try:
             cur = conn.cursor()
             values = [
