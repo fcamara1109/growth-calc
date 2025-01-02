@@ -1701,7 +1701,7 @@ def store_data(df):
             return False, f"Error storing data: {str(e)}"
     else:
         # Using PostgreSQL connection
-        cur = conn
+        cur = conn.cursor()
     try:
         values = [
             (row['date'], row['id'], float(row['revenue']), row['user_id'])
