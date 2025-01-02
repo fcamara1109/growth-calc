@@ -1,61 +1,88 @@
 # Revenue Analysis Dashboard Project Blueprint
 
 ## 1. Project Setup
-[ ] Create virtual environment
-[ ] Setup project directory structure
-[ ] Install required dependencies
-[ ] Configure git repository
-[ ] Setup environment variables
+[x] Create virtual environment
+[x] Setup project directory structure
+[x] Install required dependencies
+[x] Configure git repository
+[x] Setup environment variables
 
 ## 2. Database Setup
-[ ] Create PostgreSQL database schema
-[ ] Design tables for storing uploaded CSV data
-[ ] Create indexes for optimizing query performance
-[ ] Set up data validation rules
+[x] Create PostgreSQL database schema
+[x] Design tables for storing uploaded CSV data
+[x] Create indexes for optimizing query performance
+[x] Set up data validation rules
 
 ## 3. Core Functionality
-[ ] Implement CSV file upload and validation
-[ ] Parse CSV data and store in database
-[ ] Add error handling for malformed data
-[ ] Create data cleaning/preprocessing pipeline
+[x] Implement CSV file upload and validation
+[x] Parse CSV data and store in database
+[x] Add error handling for malformed data
+[x] Create data cleaning/preprocessing pipeline
 
 ## 4. SQL Queries Development
-[ ] Write query for cohort analysis
-[ ] Create timeline analysis queries
-[ ] Optimize queries for performance
-[ ] Add caching layer for frequently accessed data
+[x] Write test query for first analysis
+[x] Create timeline analysis queries
+[x] Validate it works with the test query
 
-## 5. Visualization Layer
-[ ] Implement cohort visualization using Plotly
-[ ] Create interactive timeline charts
-[ ] Add filtering capabilities
-[ ] Implement drill[ ]down functionality
+[x] Create MAU chart
+[x] Create WAU chart
+[x] Create DAU chart
 
-## 6. UI/UX Implementation
-[ ] Design clean, intuitive layout
-[ ] Add loading states and progress indicators
-[ ] Implement responsive design
-[ ] Add tooltips and help text
+[x] Create retention rate and quick ratio per month chart, add benchmarks
+[x] Create retention rate and quick ratio per week chart
+[x] Create retention rate and quick ratio per day chart
 
-## 7. Testing & Optimization
-[ ] Write unit tests for core functions
-[ ] Add integration tests
-[ ] Performance testing with large datasets
-[ ] Optimize database queries
+[x] Create MRR chart
+[x] Create WRR chart
+[x] Create DRR chart
 
-## 8. Documentation
+[x] Create retention rate and quick ratio per month chart, add benchmarks
+[x] Create retention rate and quick ratio per week chart
+[x] Create retention rate and quick ratio per day chart
+
+[x] Create monthly retention cohort chart 
+[x] Create weekly retention cohort chart
+[x] Create daily retention cohort chart
+
+[x] Create monthly ltv cohort chart 
+[x] Create weekly ltv cohort chart
+[x] Create daily ltv cohort chart 
+
+## 4.1. Data Management
+[x] Before storing new data, clear the database
+[x] Limit file upload size to 20MB
+
+## 5. UI/UX Implementation
+[x] Add loading states and progress indicators
+[x] Add a template CSV and instructions on how to use it
+[x] Add a button to apply filter and don't apply it by default
+[x] Adapt design to have a little personal touch
+[ ] Make it one pager with pdf export
+    [ ] Cohorts
+    [ ] Quick ratio 
+    [ ] Ret. over Period
+    [ ] Growth
+    [ ] Growth and Ret.
+    [ ] Cohorts and Quick ratio
+    [ ] Merge it all
+    [ ] Add PDF export
+[ ] Fix chart hover, show only relevant information 
+[ ] Add footer with credits
+[ ] Add reference to Github repo
+
+## 7. Documentation
 [ ] Add inline code documentation
 [ ] Create user guide
 [ ] Document database schema
 [ ] Add setup instructions
 
-## 9. Deployment
+## 8. Deployment
 [ ] Set up production database
 [ ] Configure environment variables
 [ ] Add logging
 [ ] Deploy application
 
-## 10. Maintenance Plan
+## 9. Maintenance Plan
 [ ] Monitor performance
 [ ] Regular backups
 [ ] Update dependencies
