@@ -1682,8 +1682,8 @@ def store_data(df):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         try:
-            # Format data for insertion
             values = [
                 {
                     'transaction_date': row['date'],
@@ -1694,50 +1694,40 @@ def store_data(df):
                 for _, row in df.iterrows()
             ]
             
-            # Use execute_sql for Supabase
             table_name = f'revenue_data_{st.session_state.session_id}'
-            placeholders = ','.join(['(:transaction_date, :transaction_id, :revenue, :user_id)'] * len(values))
-            query = f"""
-                INSERT INTO {table_name} 
-                (transaction_date, transaction_id, revenue, user_id)
-                VALUES {placeholders}
-            """
-            conn.execute_sql(query, values)
+            result = conn.table(table_name).insert(values).execute()
             
             return True, f"Successfully inserted {len(values)} records"
         except Exception as e:
             return False, f"Error storing data: {str(e)}"
     else:
         # Using PostgreSQL connection
-        try:
-            cur = conn.cursor()
-            values = [
-                (row['date'], row['id'], float(row['revenue']), row['user_id'])
-                for _, row in df.iterrows()
-            ]
-            
-            from psycopg2.extras import execute_values
-            execute_values(
-                cur,
-                f"""
-                INSERT INTO revenue_data_{st.session_state.session_id} 
-                (transaction_date, transaction_id, revenue, user_id)
-                VALUES %s
-                """,
-                values
-            )
-            
-            conn.commit()
-            return True, f"Successfully inserted {len(values)} records"
-        except Exception as e:
-            if conn:
-                conn.rollback()
-            return False, f"Error storing data: {str(e)}"
-        finally:
-            if cur:
-                cur.close()
-            if conn:
-                conn.close()
+        cur = conn.cursor()
+    try:
+        values = [
+            (row['date'], row['id'], float(row['revenue']), row['user_id'])
+            for _, row in df.iterrows()
+        ]
+        
+        from psycopg2.extras import execute_values
+        execute_values(
+            cur,
+            f"""
+            INSERT INTO revenue_data_{st.session_state.session_id} 
+            (transaction_date, transaction_id, revenue, user_id)
+            VALUES %s
+            """,
+            values
+        )
+        
+        conn.commit()
+        return True, f"Successfully inserted {len(values)} records"
+    except Exception as e:
+        conn.rollback()
+        return False, f"Error storing data: {str(e)}"
+    finally:
+        cur.close()
+        conn.close()
 
 if __name__ == "__main__":
     init_session_tables()
