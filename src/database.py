@@ -11,26 +11,35 @@ class SessionManager:
         self.session_id = str(uuid.uuid4()).replace('-', '_')
 
 def get_db_connection():
-    """Create database connection with session-specific temp tables"""
-    conn_params = {
-        'host': os.getenv('POSTGRES_HOST', 'localhost'),
-        'database': os.getenv('POSTGRES_DB', 'database'),
-        'user': os.getenv('POSTGRES_USER', os.getlogin()),
-        'port': int(os.getenv('POSTGRES_PORT', 5432)),
-        'cursor_factory': RealDictCursor
-    }
+    """Get database connection using environment variables"""
+    # Try Supabase/production connection first
+    if os.getenv('DB_HOST'):
+        conn = psycopg2.connect(
+            host=os.getenv('DB_HOST'),
+            database=os.getenv('DB_NAME'),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD'),
+            port=os.getenv('DB_PORT'),
+            sslmode='require',
+            cursor_factory=RealDictCursor
+        )
+        return conn
     
-    password = os.getenv('POSTGRES_PASSWORD')
-    if password and password.strip():
-        conn_params['password'] = password
-
+    # Fallback to local development connection
     try:
-        return psycopg2.connect(**conn_params)
-    except psycopg2.Error:
         return psycopg2.connect(
             host='localhost',
-            database='database',
+            database='database',  # Changed from fcamara to database
             user='fcamara',
+            port=5432,
+            cursor_factory=RealDictCursor
+        )
+    except psycopg2.Error:
+        # Final fallback with default PostgreSQL settings
+        return psycopg2.connect(
+            host='localhost',
+            database='postgres',  # Using default postgres database
+            user='postgres',
             port=5432,
             cursor_factory=RealDictCursor
         )
