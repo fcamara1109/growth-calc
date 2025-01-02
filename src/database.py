@@ -1701,32 +1701,33 @@ def store_data(df):
             return False, f"Error storing data: {str(e)}"
     else:
         # Using PostgreSQL connection
-        cur = conn.cursor()
-    try:
-        values = [
-            (row['date'], row['id'], float(row['revenue']), row['user_id'])
-            for _, row in df.iterrows()
-        ]
-        
-        from psycopg2.extras import execute_values
-        execute_values(
-            cur,
-            f"""
-            INSERT INTO revenue_data_{st.session_state.session_id} 
-            (transaction_date, transaction_id, revenue, user_id)
-            VALUES %s
-            """,
-            values
-        )
-        
-        conn.commit()
-        return True, f"Successfully inserted {len(values)} records"
-    except Exception as e:
-        conn.rollback()
-        return False, f"Error storing data: {str(e)}"
-    finally:
-        cur.close()
-        conn.close()
+        try:
+            cur = conn.cursor()
+            values = [
+                (row['date'], row['id'], float(row['revenue']), row['user_id'])
+                for _, row in df.iterrows()
+            ]
+            
+            from psycopg2.extras import execute_values
+            execute_values(
+                cur,
+                f"""
+                INSERT INTO revenue_data_{st.session_state.session_id} 
+                (transaction_date, transaction_id, revenue, user_id)
+                VALUES %s
+                """,
+                values
+            )
+            
+            conn.commit()
+            return True, f"Successfully inserted {len(values)} records"
+        except Exception as e:
+            conn.rollback()
+            return False, f"Error storing data: {str(e)}"
+        finally:
+            if 'cur' in locals():
+                cur.close()
+            conn.close()
 
 if __name__ == "__main__":
     init_session_tables()
