@@ -26,6 +26,7 @@ With that, some SQL queries are going to run and with streamlit we will plot a c
 - Use `.table()` instead of `.query()` for table operations
 - Use `execute_query()` helper function from st_supabase_connection for operations
 - Always set `ttl=0` to prevent caching issues
+- Don't use rpc, it doesn't work.
 
 ## Session Management
 - Add session_id column to tables that need session isolation

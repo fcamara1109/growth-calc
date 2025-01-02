@@ -47,11 +47,28 @@ def init_session_tables(session_id):
         table_name = f'revenue_data_{session_id}'
         
         try:
-            # Call the stored procedure using rpc
-            conn.rpc(
-                'create_session_revenue_table',
-                {'session_id': session_id}
-            ).execute()
+            # Create table using raw SQL
+            from st_supabase_connection import execute_query
+            execute_query(
+                conn,
+                {
+                    'query': """
+                    CREATE TABLE IF NOT EXISTS revenue_data_{session_id} (
+                        id BIGSERIAL PRIMARY KEY,
+                        transaction_date DATE NOT NULL,
+                        transaction_id VARCHAR(255) NOT NULL UNIQUE,
+                        revenue DECIMAL(10,2) NOT NULL,
+                        user_id VARCHAR(255) NOT NULL,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    );
+                    
+                    CREATE INDEX IF NOT EXISTS idx_revenue_date_{session_id} 
+                        ON revenue_data_{session_id}(transaction_date);
+                    CREATE INDEX IF NOT EXISTS idx_revenue_user_{session_id} 
+                        ON revenue_data_{session_id}(user_id);
+                    """.format(session_id=session_id)
+                }
+            )
             
             # Clear existing data if table already existed
             conn.table(table_name).delete().neq('id', 0).execute()
