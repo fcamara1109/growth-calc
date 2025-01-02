@@ -62,7 +62,8 @@ def init_session_tables(session_id):
             CREATE INDEX IF NOT EXISTS idx_revenue_user_{session_id} 
                 ON revenue_data_{session_id}(user_id);
         """
-        conn.query(query).execute()
+        # Use the correct Supabase method
+        conn.session.execute(query)
     else:
         # Using PostgreSQL connection
         cur = conn.cursor()
