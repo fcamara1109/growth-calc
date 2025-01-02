@@ -62,7 +62,7 @@ def init_session_tables(session_id):
             CREATE INDEX IF NOT EXISTS idx_revenue_user_{session_id} 
                 ON revenue_data_{session_id}(user_id);
         """
-        conn.query(query).execute()
+        conn.session.execute(query)
     else:
         # Using PostgreSQL connection
         cur = conn.cursor()
@@ -100,13 +100,13 @@ def table_exists(cur, table_name):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
-        result = conn.query("""
+        result = conn.session.execute("""
             SELECT EXISTS (
                 SELECT FROM pg_tables 
                 WHERE tablename = :table_name
             );
-        """).execute({"table_name": table_name})
-        return result.data[0]['exists']
+        """, {'table_name': table_name})
+        return result.fetchone()[0]
     else:
         cur.execute("""
             SELECT EXISTS (
@@ -1660,7 +1660,7 @@ def clear_all_data(session_id):
     if isinstance(conn, SupabaseConnection):
         try:
             query = f"TRUNCATE TABLE revenue_data_{session_id};"
-            conn.query(query).execute()
+            conn.session.execute(query)
             return True, "Data cleared successfully"
         except Exception as e:
             return False, f"Error clearing data: {str(e)}"
