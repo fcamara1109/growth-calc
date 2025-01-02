@@ -67,27 +67,30 @@ def init_session_tables(session_id):
         # Using PostgreSQL connection
         cur = conn.cursor()
         try:
-        cur.execute(f"""
-            DROP TABLE IF EXISTS revenue_data_{session_id};
-            
-            CREATE UNLOGGED TABLE revenue_data_{session_id} (
-                id SERIAL PRIMARY KEY,
-                transaction_date DATE NOT NULL,
-                transaction_id VARCHAR(255) NOT NULL UNIQUE,
-                revenue DECIMAL(10,2) NOT NULL,
-                user_id VARCHAR(255) NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-            
-            CREATE INDEX IF NOT EXISTS idx_revenue_date_{session_id} 
-                ON revenue_data_{session_id}(transaction_date);
-            CREATE INDEX IF NOT EXISTS idx_revenue_user_{session_id} 
-                ON revenue_data_{session_id}(user_id);
-        """)
-        conn.commit()
-    finally:
-        cur.close()
-        conn.close()
+            cur.execute(f"""
+                DROP TABLE IF EXISTS revenue_data_{session_id};
+                
+                CREATE UNLOGGED TABLE revenue_data_{session_id} (
+                    id SERIAL PRIMARY KEY,
+                    transaction_date DATE NOT NULL,
+                    transaction_id VARCHAR(255) NOT NULL UNIQUE,
+                    revenue DECIMAL(10,2) NOT NULL,
+                    user_id VARCHAR(255) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                
+                CREATE INDEX IF NOT EXISTS idx_revenue_date_{session_id} 
+                    ON revenue_data_{session_id}(transaction_date);
+                CREATE INDEX IF NOT EXISTS idx_revenue_user_{session_id} 
+                    ON revenue_data_{session_id}(user_id);
+            """)
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            cur.close()
+            conn.close()
 
 def load_query(filename, session_id):
     """Load SQL query from file and replace table names with session-specific ones"""
@@ -108,13 +111,13 @@ def table_exists(cur, table_name):
         """, values=[table_name]).execute()
         return result.data[0]['exists']
     else:
-    cur.execute("""
-        SELECT EXISTS (
-            SELECT FROM pg_tables 
-            WHERE tablename = %s
-        );
-    """, (table_name,))
-    return cur.fetchone()['exists']
+        cur.execute("""
+            SELECT EXISTS (
+                SELECT FROM pg_tables 
+                WHERE tablename = %s
+            );
+        """, (table_name,))
+        return cur.fetchone()['exists']
 
 def get_mau_data(session_id, start_date, end_date):
     """Get Monthly Active Users data"""
@@ -538,7 +541,7 @@ def get_daily_retention_rates(session_id, start_date, end_date):
         dau_query = load_query('dau', session_id).replace('daily_rev', f'daily_rev_{session_id}')
         
         # Then run retention rates query with DAU data
-            retention_query = load_query('daily_revenue_retention_timeseries', session_id)
+        retention_query = load_query('daily_revenue_retention_timeseries', session_id)
         retention_query = retention_query.format(dau_query=dau_query)
         retention_query = retention_query.replace(
             'WHERE day <=',
@@ -768,12 +771,12 @@ def get_daily_quick_ratio(session_id, start_date, end_date):
         """ + load_query('daily_rev', session_id))
         conn.commit()
         
-            # Get DRR query
-            drr_query = load_query('drr', session_id).replace('daily_rev', f'daily_rev_{session_id}')
-            
-            # Then run quick ratio query with DRR data
-            quick_ratio_query = load_query('daily_revenue_quick_ratio', session_id)
-            quick_ratio_query = quick_ratio_query.format(drr_query=drr_query)
+        # Get DRR query
+        drr_query = load_query('drr', session_id).replace('daily_rev', f'daily_rev_{session_id}')
+        
+        # Then run quick ratio query with DRR data
+        quick_ratio_query = load_query('daily_revenue_quick_ratio', session_id)
+        quick_ratio_query = quick_ratio_query.format(drr_query=drr_query)
         quick_ratio_query = quick_ratio_query.replace(
             'WHERE day <=',
             'WHERE day BETWEEN %s AND %s AND day <='
@@ -1658,7 +1661,6 @@ def clear_all_data(session_id):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
-        # Using Supabase connection
         try:
             query = f"TRUNCATE TABLE revenue_data_{session_id};"
             conn.query(query).execute()
@@ -1666,17 +1668,16 @@ def clear_all_data(session_id):
         except Exception as e:
             return False, f"Error clearing data: {str(e)}"
     else:
-        # Using PostgreSQL connection
-        with conn.cursor() as cur:
-            try:
-            cur.execute(f"TRUNCATE TABLE revenue_data_{session_id};")
-        conn.commit()
-                return True, "Data cleared successfully"
-            except Exception as e:
-                conn.rollback()
-                return False, f"Error clearing data: {str(e)}"
-            finally:
-                conn.close()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(f"TRUNCATE TABLE revenue_data_{session_id};")
+                conn.commit()
+            return True, "Data cleared successfully"
+        except Exception as e:
+            conn.rollback()
+            return False, f"Error clearing data: {str(e)}"
+        finally:
+            conn.close()
 
 def store_data(df):
     """Store validated data in database"""
