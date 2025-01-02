@@ -47,15 +47,11 @@ def init_session_tables(session_id):
         table_name = f'revenue_data_{session_id}'
         
         try:
-            # Use execute_query to call our create_session_revenue_table function
-            from st_supabase_connection import execute_query
-            execute_query(
-                conn.table('revenue_data_template').select("*"),
-                {
-                    'query': 'SELECT create_session_revenue_table(:session_id)',
-                    'session_id': session_id
-                }
-            )
+            # Call the stored procedure using rpc
+            conn.rpc(
+                'create_session_revenue_table',
+                {'session_id': session_id}
+            ).execute()
             
             # Clear existing data if table already existed
             conn.table(table_name).delete().neq('id', 0).execute()
