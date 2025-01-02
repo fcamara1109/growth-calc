@@ -5,7 +5,6 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import streamlit as st
 from st_supabase_connection import SupabaseConnection
-import json
 
 load_dotenv()
 
@@ -63,7 +62,7 @@ def init_session_tables(session_id):
             CREATE INDEX IF NOT EXISTS idx_revenue_user_{session_id} 
                 ON revenue_data_{session_id}(user_id);
         """
-        conn.query(query).execute()
+        conn.session.execute(query)
     else:
         # Using PostgreSQL connection
         cur = conn.cursor()
@@ -101,13 +100,13 @@ def table_exists(cur, table_name):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
-        result = conn.query("""
+        result = conn.session.execute("""
             SELECT EXISTS (
                 SELECT FROM pg_tables 
                 WHERE tablename = :table_name
             );
-        """).execute({"table_name": table_name})
-        return result.data[0]['exists']
+        """, {'table_name': table_name})
+        return result.fetchone()[0]
     else:
         cur.execute("""
             SELECT EXISTS (
@@ -122,8 +121,9 @@ def get_mau_data(session_id, start_date, end_date):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         table_name = f'revenue_data_{session_id}'
-        if not table_exists(None, table_name):
+        if not table_exists(None, table_name):  # None since we don't need cursor for Supabase
             return []
         
         # First create daily revenue data
@@ -141,10 +141,10 @@ def get_mau_data(session_id, start_date, end_date):
             'where month between :start_date and :end_date and month <='
         )
         
-        result = conn.query(mau_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
+        result = conn.query(
+            mau_query,
+            values={'start_date': start_date, 'end_date': end_date}
+        ).execute()
         
         # Clean up temp table
         conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
@@ -191,6 +191,7 @@ def get_wau_data(session_id, start_date, end_date):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         table_name = f'revenue_data_{session_id}'
         if not table_exists(None, table_name):
             return []
@@ -210,10 +211,10 @@ def get_wau_data(session_id, start_date, end_date):
             'where week between :start_date and :end_date and week <='
         )
         
-        result = conn.query(wau_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
+        result = conn.query(
+            wau_query,
+            values={'start_date': start_date, 'end_date': end_date}
+        ).execute()
         
         # Clean up temp table
         conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
@@ -260,6 +261,7 @@ def get_dau_data(session_id, start_date, end_date):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         table_name = f'revenue_data_{session_id}'
         if not table_exists(None, table_name):
             return []
@@ -279,10 +281,10 @@ def get_dau_data(session_id, start_date, end_date):
             'where day between :start_date and :end_date and day <='
         )
         
-        result = conn.query(dau_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
+        result = conn.query(
+            dau_query,
+            values={'start_date': start_date, 'end_date': end_date}
+        ).execute()
         
         # Clean up temp table
         conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
@@ -329,6 +331,7 @@ def get_monthly_retention_rates(session_id, start_date, end_date):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         table_name = f'revenue_data_{session_id}'
         if not table_exists(None, table_name):
             return []
@@ -352,10 +355,10 @@ def get_monthly_retention_rates(session_id, start_date, end_date):
             'WHERE month BETWEEN :start_date AND :end_date AND month <='
         )
         
-        result = conn.query(retention_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
+        result = conn.query(
+            retention_query,
+            values={'start_date': start_date, 'end_date': end_date}
+        ).execute()
         
         # Clean up temp table
         conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
@@ -406,6 +409,7 @@ def get_weekly_retention_rates(session_id, start_date, end_date):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         table_name = f'revenue_data_{session_id}'
         if not table_exists(None, table_name):
             return []
@@ -429,10 +433,10 @@ def get_weekly_retention_rates(session_id, start_date, end_date):
             'WHERE week BETWEEN :start_date AND :end_date AND week <='
         )
         
-        result = conn.query(retention_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
+        result = conn.query(
+            retention_query,
+            values={'start_date': start_date, 'end_date': end_date}
+        ).execute()
         
         # Clean up temp table
         conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
@@ -483,6 +487,7 @@ def get_daily_retention_rates(session_id, start_date, end_date):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         table_name = f'revenue_data_{session_id}'
         if not table_exists(None, table_name):
             return []
@@ -499,17 +504,17 @@ def get_daily_retention_rates(session_id, start_date, end_date):
         dau_query = load_query('dau', session_id).replace('daily_rev', f'daily_rev_{session_id}')
         
         # Then run retention rates query with DAU data
-        retention_query = load_query('daily_revenue_retention_timeseries', session_id)
+        retention_query = load_query('daily_retention_timeseries', session_id)
         retention_query = retention_query.format(dau_query=dau_query)
         retention_query = retention_query.replace(
             'WHERE day <=',
             'WHERE day BETWEEN :start_date AND :end_date AND day <='
         )
         
-        result = conn.query(retention_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
+        result = conn.query(
+            retention_query,
+            values={'start_date': start_date, 'end_date': end_date}
+        ).execute()
         
         # Clean up temp table
         conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
@@ -560,6 +565,7 @@ def get_monthly_quick_ratio(session_id, start_date, end_date):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         table_name = f'revenue_data_{session_id}'
         if not table_exists(None, table_name):
             return []
@@ -583,10 +589,10 @@ def get_monthly_quick_ratio(session_id, start_date, end_date):
             'WHERE month BETWEEN :start_date AND :end_date AND month <='
         )
         
-        result = conn.query(quick_ratio_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
+        result = conn.query(
+            quick_ratio_query,
+            values={'start_date': start_date, 'end_date': end_date}
+        ).execute()
         
         # Clean up temp table
         conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
@@ -637,6 +643,7 @@ def get_weekly_quick_ratio(session_id, start_date, end_date):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         table_name = f'revenue_data_{session_id}'
         if not table_exists(None, table_name):
             return []
@@ -649,21 +656,21 @@ def get_weekly_quick_ratio(session_id, start_date, end_date):
             {daily_rev_query}
         """).execute()
         
-        # Get WRR query
-        wrr_query = load_query('wrr', session_id).replace('daily_rev', f'daily_rev_{session_id}')
+        # Get WAU query
+        wau_query = load_query('wau', session_id).replace('daily_rev', f'daily_rev_{session_id}')
         
-        # Then run quick ratio query with WRR data
-        quick_ratio_query = load_query('weekly_revenue_quick_ratio', session_id)
-        quick_ratio_query = quick_ratio_query.format(wrr_query=wrr_query)
+        # Then run quick ratio query with WAU data
+        quick_ratio_query = load_query('weekly_quick_ratio', session_id)
+        quick_ratio_query = quick_ratio_query.format(wau_query=wau_query)
         quick_ratio_query = quick_ratio_query.replace(
             'WHERE week <=',
             'WHERE week BETWEEN :start_date AND :end_date AND week <='
         )
         
-        result = conn.query(quick_ratio_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
+        result = conn.query(
+            quick_ratio_query,
+            values={'start_date': start_date, 'end_date': end_date}
+        ).execute()
         
         # Clean up temp table
         conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
@@ -683,12 +690,12 @@ def get_weekly_quick_ratio(session_id, start_date, end_date):
         """ + load_query('daily_rev', session_id))
         conn.commit()
         
-        # Get WRR query
-        wrr_query = load_query('wrr', session_id).replace('daily_rev', f'daily_rev_{session_id}')
+        # Get WAU query
+        wau_query = load_query('wau', session_id).replace('daily_rev', f'daily_rev_{session_id}')
         
-        # Then run quick ratio query with WRR data
-        quick_ratio_query = load_query('weekly_revenue_quick_ratio', session_id)
-        quick_ratio_query = quick_ratio_query.format(wrr_query=wrr_query)
+        # Then run quick ratio query with WAU data
+        quick_ratio_query = load_query('weekly_quick_ratio', session_id)
+        quick_ratio_query = quick_ratio_query.format(wau_query=wau_query)
         quick_ratio_query = quick_ratio_query.replace(
             'WHERE week <=',
             'WHERE week BETWEEN %s AND %s AND week <='
@@ -710,10 +717,11 @@ def get_weekly_quick_ratio(session_id, start_date, end_date):
         conn.close()
 
 def get_daily_quick_ratio(session_id, start_date, end_date):
-    """Get daily quick ratio data"""
+    """Get daily revenue quick ratio data"""
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         table_name = f'revenue_data_{session_id}'
         if not table_exists(None, table_name):
             return []
@@ -737,10 +745,10 @@ def get_daily_quick_ratio(session_id, start_date, end_date):
             'WHERE day BETWEEN :start_date AND :end_date AND day <='
         )
         
-        result = conn.query(quick_ratio_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
+        result = conn.query(
+            quick_ratio_query,
+            values={'start_date': start_date, 'end_date': end_date}
+        ).execute()
         
         # Clean up temp table
         conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
@@ -791,6 +799,7 @@ def get_mrr_data(session_id, start_date, end_date):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         table_name = f'revenue_data_{session_id}'
         if not table_exists(None, table_name):
             return []
@@ -810,10 +819,10 @@ def get_mrr_data(session_id, start_date, end_date):
             'where month between :start_date and :end_date and month <='
         )
         
-        result = conn.query(mrr_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
+        result = conn.query(
+            mrr_query,
+            values={'start_date': start_date, 'end_date': end_date}
+        ).execute()
         
         # Clean up temp table
         conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
@@ -860,6 +869,7 @@ def get_wrr_data(session_id, start_date, end_date):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         table_name = f'revenue_data_{session_id}'
         if not table_exists(None, table_name):
             return []
@@ -879,10 +889,10 @@ def get_wrr_data(session_id, start_date, end_date):
             'where week between :start_date and :end_date and week <='
         )
         
-        result = conn.query(wrr_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
+        result = conn.query(
+            wrr_query,
+            values={'start_date': start_date, 'end_date': end_date}
+        ).execute()
         
         # Clean up temp table
         conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
@@ -929,6 +939,7 @@ def get_drr_data(session_id, start_date, end_date):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         table_name = f'revenue_data_{session_id}'
         if not table_exists(None, table_name):
             return []
@@ -948,10 +959,10 @@ def get_drr_data(session_id, start_date, end_date):
             'where day between :start_date and :end_date and day <='
         )
         
-        result = conn.query(drr_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
+        result = conn.query(
+            drr_query,
+            values={'start_date': start_date, 'end_date': end_date}
+        ).execute()
         
         # Clean up temp table
         conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
@@ -996,43 +1007,8 @@ def get_drr_data(session_id, start_date, end_date):
 def get_monthly_revenue_retention_rates(session_id, start_date, end_date):
     """Get monthly revenue retention rates data"""
     conn = get_db_connection()
+    cur = conn.cursor()
     
-    if isinstance(conn, SupabaseConnection):
-        table_name = f'revenue_data_{session_id}'
-        if not table_exists(None, table_name):
-            return []
-        
-        # First create daily revenue data
-        daily_rev_query = load_query('daily_rev', session_id)
-        conn.query(f"""
-            DROP TABLE IF EXISTS daily_rev_{session_id};
-            CREATE TEMP TABLE daily_rev_{session_id} AS
-            {daily_rev_query}
-        """).execute()
-        
-        # Get MRR query
-        mrr_query = load_query('mrr', session_id).replace('daily_rev', f'daily_rev_{session_id}')
-        
-        # Then run retention rates query with MRR data
-        retention_query = load_query('monthly_revenue_retention_timeseries', session_id)
-        retention_query = retention_query.format(mrr_query=mrr_query)
-        retention_query = retention_query.replace(
-            'WHERE month <=',
-            'WHERE month BETWEEN :start_date AND :end_date AND month <='
-        )
-        
-        result = conn.query(retention_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
-        
-        # Clean up temp table
-        conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
-        
-        return result.data
-    else:
-        # Using PostgreSQL connection
-        cur = conn.cursor()
     try:
         table_name = f'revenue_data_{session_id}'
         if not table_exists(cur, table_name):
@@ -1073,43 +1049,8 @@ def get_monthly_revenue_retention_rates(session_id, start_date, end_date):
 def get_weekly_revenue_retention_rates(session_id, start_date, end_date):
     """Get weekly revenue retention rates data"""
     conn = get_db_connection()
+    cur = conn.cursor()
     
-    if isinstance(conn, SupabaseConnection):
-        table_name = f'revenue_data_{session_id}'
-        if not table_exists(None, table_name):
-            return []
-        
-        # First create daily revenue data
-        daily_rev_query = load_query('daily_rev', session_id)
-        conn.query(f"""
-            DROP TABLE IF EXISTS daily_rev_{session_id};
-            CREATE TEMP TABLE daily_rev_{session_id} AS
-            {daily_rev_query}
-        """).execute()
-        
-        # Get WRR query
-        wrr_query = load_query('wrr', session_id).replace('daily_rev', f'daily_rev_{session_id}')
-        
-        # Then run retention rates query with WRR data
-        retention_query = load_query('weekly_revenue_retention_timeseries', session_id)
-        retention_query = retention_query.format(wrr_query=wrr_query)
-        retention_query = retention_query.replace(
-            'WHERE week <=',
-            'WHERE week BETWEEN :start_date AND :end_date AND week <='
-        )
-        
-        result = conn.query(retention_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
-        
-        # Clean up temp table
-        conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
-        
-        return result.data
-    else:
-        # Using PostgreSQL connection
-        cur = conn.cursor()
     try:
         table_name = f'revenue_data_{session_id}'
         if not table_exists(cur, table_name):
@@ -1150,43 +1091,8 @@ def get_weekly_revenue_retention_rates(session_id, start_date, end_date):
 def get_daily_revenue_retention_rates(session_id, start_date, end_date):
     """Get daily revenue retention rates data"""
     conn = get_db_connection()
+    cur = conn.cursor()
     
-    if isinstance(conn, SupabaseConnection):
-        table_name = f'revenue_data_{session_id}'
-        if not table_exists(None, table_name):
-            return []
-        
-        # First create daily revenue data
-        daily_rev_query = load_query('daily_rev', session_id)
-        conn.query(f"""
-            DROP TABLE IF EXISTS daily_rev_{session_id};
-            CREATE TEMP TABLE daily_rev_{session_id} AS
-            {daily_rev_query}
-        """).execute()
-        
-        # Get DAU query
-        dau_query = load_query('dau', session_id).replace('daily_rev', f'daily_rev_{session_id}')
-        
-        # Then run retention rates query with DAU data
-        retention_query = load_query('daily_revenue_retention_timeseries', session_id)
-        retention_query = retention_query.format(dau_query=dau_query)
-        retention_query = retention_query.replace(
-            'WHERE day <=',
-            'WHERE day BETWEEN :start_date AND :end_date AND day <='
-        )
-        
-        result = conn.query(retention_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
-        
-        # Clean up temp table
-        conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
-        
-        return result.data
-    else:
-        # Using PostgreSQL connection
-        cur = conn.cursor()
     try:
         table_name = f'revenue_data_{session_id}'
         if not table_exists(cur, table_name):
@@ -1198,12 +1104,12 @@ def get_daily_revenue_retention_rates(session_id, start_date, end_date):
         """ + load_query('daily_rev', session_id))
         conn.commit()
         
-        # Get DAU query
-        dau_query = load_query('dau', session_id).replace('daily_rev', f'daily_rev_{session_id}')
+        # Get DRR query
+        drr_query = load_query('drr', session_id).replace('daily_rev', f'daily_rev_{session_id}')
         
-        # Then run retention rates query with DAU data
+        # Then run retention rates query with DRR data
         retention_query = load_query('daily_revenue_retention_timeseries', session_id)
-        retention_query = retention_query.format(dau_query=dau_query)
+        retention_query = retention_query.format(drr_query=drr_query)
         retention_query = retention_query.replace(
             'WHERE day <=',
             'WHERE day BETWEEN %s AND %s AND day <='
@@ -1229,6 +1135,7 @@ def get_monthly_revenue_quick_ratio(session_id, start_date, end_date):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         table_name = f'revenue_data_{session_id}'
         if not table_exists(None, table_name):
             return []
@@ -1252,10 +1159,10 @@ def get_monthly_revenue_quick_ratio(session_id, start_date, end_date):
             'WHERE month BETWEEN :start_date AND :end_date AND month <='
         )
         
-        result = conn.query(quick_ratio_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
+        result = conn.query(
+            quick_ratio_query,
+            values={'start_date': start_date, 'end_date': end_date}
+        ).execute()
         
         # Clean up temp table
         conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
@@ -1306,6 +1213,7 @@ def get_weekly_revenue_quick_ratio(session_id, start_date, end_date):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         table_name = f'revenue_data_{session_id}'
         if not table_exists(None, table_name):
             return []
@@ -1329,10 +1237,10 @@ def get_weekly_revenue_quick_ratio(session_id, start_date, end_date):
             'WHERE week BETWEEN :start_date AND :end_date AND week <='
         )
         
-        result = conn.query(quick_ratio_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
+        result = conn.query(
+            quick_ratio_query,
+            values={'start_date': start_date, 'end_date': end_date}
+        ).execute()
         
         # Clean up temp table
         conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
@@ -1383,6 +1291,7 @@ def get_daily_revenue_quick_ratio(session_id, start_date, end_date):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         table_name = f'revenue_data_{session_id}'
         if not table_exists(None, table_name):
             return []
@@ -1406,10 +1315,10 @@ def get_daily_revenue_quick_ratio(session_id, start_date, end_date):
             'WHERE day BETWEEN :start_date AND :end_date AND day <='
         )
         
-        result = conn.query(quick_ratio_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
+        result = conn.query(
+            quick_ratio_query,
+            values={'start_date': start_date, 'end_date': end_date}
+        ).execute()
         
         # Clean up temp table
         conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
@@ -1460,6 +1369,7 @@ def get_monthly_cohorts(session_id, start_date, end_date):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         table_name = f'revenue_data_{session_id}'
         if not table_exists(None, table_name):
             return []
@@ -1481,10 +1391,10 @@ def get_monthly_cohorts(session_id, start_date, end_date):
             'and first_month between :start_date and :end_date and first_month <= current_date'
         )
         
-        result = conn.query(cohorts_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
+        result = conn.query(
+            cohorts_query,
+            values={'start_date': start_date, 'end_date': end_date}
+        ).execute()
         
         # Clean up temp table
         conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
@@ -1533,6 +1443,7 @@ def get_weekly_cohorts(session_id, start_date, end_date):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         table_name = f'revenue_data_{session_id}'
         if not table_exists(None, table_name):
             return []
@@ -1554,10 +1465,10 @@ def get_weekly_cohorts(session_id, start_date, end_date):
             'and first_week between :start_date and :end_date and first_week <= current_date'
         )
         
-        result = conn.query(cohorts_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
+        result = conn.query(
+            cohorts_query,
+            values={'start_date': start_date, 'end_date': end_date}
+        ).execute()
         
         # Clean up temp table
         conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
@@ -1673,6 +1584,7 @@ def get_daily_cohorts(session_id, start_date, end_date):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         table_name = f'revenue_data_{session_id}'
         if not table_exists(None, table_name):
             return []
@@ -1694,10 +1606,10 @@ def get_daily_cohorts(session_id, start_date, end_date):
             'and first_dt between :start_date and :end_date and first_dt <= current_date'
         )
         
-        result = conn.query(cohorts_query).execute({
-            'start_date': start_date,
-            'end_date': end_date
-        })
+        result = conn.query(
+            cohorts_query,
+            values={'start_date': start_date, 'end_date': end_date}
+        ).execute()
         
         # Clean up temp table
         conn.query(f"DROP TABLE IF EXISTS daily_rev_{session_id}").execute()
@@ -1748,7 +1660,7 @@ def clear_all_data(session_id):
     if isinstance(conn, SupabaseConnection):
         try:
             query = f"TRUNCATE TABLE revenue_data_{session_id};"
-            conn.query(query).execute()
+            conn.session.execute(query)
             return True, "Data cleared successfully"
         except Exception as e:
             return False, f"Error clearing data: {str(e)}"
@@ -1769,6 +1681,7 @@ def store_data(df):
     conn = get_db_connection()
     
     if isinstance(conn, SupabaseConnection):
+        # Using Supabase connection
         try:
             values = [
                 {
@@ -1781,11 +1694,7 @@ def store_data(df):
             ]
             
             table_name = f'revenue_data_{st.session_state.session_id}'
-            conn.query(f"""
-                INSERT INTO {table_name} 
-                (transaction_date, transaction_id, revenue, user_id)
-                SELECT * FROM json_populate_recordset(null::{table_name}, :values::json)
-            """).execute({'values': json.dumps(values)})
+            result = conn.table(table_name).insert(values).execute()
             
             return True, f"Successfully inserted {len(values)} records"
         except Exception as e:
