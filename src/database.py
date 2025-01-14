@@ -1,37 +1,72 @@
 from st_supabase_connection import SupabaseConnection, execute_query
 import streamlit as st
 import pandas as pd
+from time import sleep
+from typing import List
+import math
 
 def init_connection():
     """Initialize Supabase connection"""
     return st.connection("supabase", type=SupabaseConnection)
 
+def create_revenue_table_batch(df_chunk):
+    """Insert a single batch of data with retry logic"""
+    max_retries = 3
+    retry_delay = 1  # seconds
+    
+    for attempt in range(max_retries):
+        try:
+            conn = init_connection()
+            
+            # Prepare data
+            df_chunk = df_chunk.copy()
+            df_chunk = df_chunk.rename(columns={
+                'date': 'transaction_date',
+                'id': 'transaction_id'
+            })
+            df_chunk['session_id'] = st.session_state.session_id
+            
+            # Insert data
+            records = df_chunk.to_dict('records')
+            result = execute_query(
+                conn.table("revenue_data").upsert(records),
+                ttl=0
+            )
+            
+            return result
+            
+        except Exception as e:
+            if attempt == max_retries - 1:  # Last attempt
+                raise e
+            sleep(retry_delay * (attempt + 1))  # Exponential backoff
+            continue
+
 def create_revenue_table(df):
-    """Insert data into revenue_data table with session_id"""
-    conn = init_connection()
+    """Insert data into revenue_data table with batching"""
+    # Calculate optimal batch size based on total rows
+    total_rows = len(df)
+    batch_size = min(1000, math.ceil(total_rows / 50))  # Max 1000 rows per batch, min 50 batches
     
-    # Prepare data
-    df = df.copy()
-    df = df.rename(columns={
-        'date': 'transaction_date',
-        'id': 'transaction_id'
-    })
-    df['session_id'] = st.session_state.session_id
+    # Process data in smaller batches
+    for start_idx in range(0, total_rows, batch_size):
+        end_idx = min(start_idx + batch_size, total_rows)
+        chunk = df[start_idx:end_idx]
+        
+        try:
+            create_revenue_table_batch(chunk)
+            
+            # Refresh materialized views periodically (every 5000 rows or at the end)
+            if (end_idx % 5000 == 0) or (end_idx == total_rows):
+                conn = init_connection()
+                execute_query(
+                    conn.table("refresh_trigger").insert({"created_at": "now()"}),
+                    ttl=0
+                )
+                
+        except Exception as e:
+            raise Exception(f"Error processing rows {start_idx}-{end_idx}: {str(e)}")
     
-    # Insert data
-    records = df.to_dict('records')
-    result = execute_query(
-        conn.table("revenue_data").upsert(records),
-        ttl=0
-    )
-    
-    # Trigger view refresh by inserting into refresh_trigger table
-    execute_query(
-        conn.table("refresh_trigger").insert({"created_at": "now()"}),
-        ttl=0
-    )
-    
-    return result
+    return True
 
 def get_daily_revenue():
     """Get all revenue data for current session"""
