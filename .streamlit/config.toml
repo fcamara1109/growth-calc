@@ -1,0 +1,10 @@
+[theme]
+primaryColor = "#62ab37"
+backgroundColor = "#1a1a1a"
+secondaryBackgroundColor = "#242424"
+textColor = "#a6ebc9"
+font = "monospace"
+
+[server]
+port = 8501
+maxUploadSize = 200

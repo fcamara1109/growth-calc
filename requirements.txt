@@ -1,0 +1,2 @@
+st-supabase-connection==2.0.1
+pandas==2.2.0
