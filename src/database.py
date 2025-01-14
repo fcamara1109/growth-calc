@@ -55,23 +55,40 @@ def create_revenue_table(df):
         try:
             create_revenue_table_batch(chunk)
             
-            # Refresh materialized views less frequently
-            if (end_idx % 10000 == 0) or (end_idx == total_rows):
-                conn = init_connection()
-                try:
-                    execute_query(
-                        conn.table("refresh_trigger").insert({"created_at": "now()"}),
-                        ttl=0
-                    )
-                except Exception:
-                    # Ignore refresh failures - they're not critical
-                    pass
+            # Don't refresh views during batch processing
+            # This prevents timeouts during data insertion
                 
         except Exception as e:
             raise Exception(f"Error processing rows {start_idx}-{end_idx}: {str(e)}")
         
         # Add a small delay between batches to prevent overwhelming the server
         sleep(0.1)
+    
+    # After all data is inserted, refresh views once with retries
+    max_refresh_retries = 3
+    for attempt in range(max_refresh_retries):
+        try:
+            conn = init_connection()
+            # First refresh the non-materialized views by querying them
+            execute_query(
+                conn.table("mau_view").select("count").eq('session_id', st.session_state.session_id),
+                ttl=0
+            )
+            
+            # Then trigger materialized view refresh
+            execute_query(
+                conn.table("refresh_trigger").insert({"created_at": "now()"}),
+                ttl=0
+            )
+            
+            # Wait for materialized views to refresh
+            sleep(5)  # Give the database time to process the refresh
+            break
+            
+        except Exception as e:
+            if attempt == max_refresh_retries - 1:
+                st.warning("Some visualizations might take longer to load due to data processing.")
+            sleep(2 ** attempt)
     
     return True
 
