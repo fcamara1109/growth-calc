@@ -11,8 +11,8 @@ def init_connection():
 
 def create_revenue_table_batch(df_chunk):
     """Insert a single batch of data with retry logic"""
-    max_retries = 3
-    retry_delay = 1  # seconds
+    max_retries = 5  # Increased retries
+    retry_delay = 0.5  # Reduced initial delay
     
     for attempt in range(max_retries):
         try:
@@ -38,14 +38,14 @@ def create_revenue_table_batch(df_chunk):
         except Exception as e:
             if attempt == max_retries - 1:  # Last attempt
                 raise e
-            sleep(retry_delay * (attempt + 1))  # Exponential backoff
+            sleep(retry_delay * (2 ** attempt))  # True exponential backoff
             continue
 
 def create_revenue_table(df):
     """Insert data into revenue_data table with batching"""
-    # Calculate optimal batch size based on total rows
+    # Much smaller batch size
+    batch_size = 100  # Fixed small batch size
     total_rows = len(df)
-    batch_size = min(1000, math.ceil(total_rows / 50))  # Max 1000 rows per batch, min 50 batches
     
     # Process data in smaller batches
     for start_idx in range(0, total_rows, batch_size):
@@ -55,16 +55,23 @@ def create_revenue_table(df):
         try:
             create_revenue_table_batch(chunk)
             
-            # Refresh materialized views periodically (every 5000 rows or at the end)
-            if (end_idx % 5000 == 0) or (end_idx == total_rows):
+            # Refresh materialized views less frequently
+            if (end_idx % 10000 == 0) or (end_idx == total_rows):
                 conn = init_connection()
-                execute_query(
-                    conn.table("refresh_trigger").insert({"created_at": "now()"}),
-                    ttl=0
-                )
+                try:
+                    execute_query(
+                        conn.table("refresh_trigger").insert({"created_at": "now()"}),
+                        ttl=0
+                    )
+                except Exception:
+                    # Ignore refresh failures - they're not critical
+                    pass
                 
         except Exception as e:
             raise Exception(f"Error processing rows {start_idx}-{end_idx}: {str(e)}")
+        
+        # Add a small delay between batches to prevent overwhelming the server
+        sleep(0.1)
     
     return True
 
