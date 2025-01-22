@@ -6,3 +6,5 @@ data/*.csv
 .streamlit/secrets.toml
 sql/
 blueprints/
+.cursorrules
+csv_upload_app.py

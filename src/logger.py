@@ -3,16 +3,45 @@ import logging
 from datetime import datetime
 from st_supabase_connection import SupabaseConnection
 
+class MetricsLogger:
+    def __init__(self, supabase: SupabaseConnection):
+        self.supabase = supabase
+
+    def log_user_action(self, action: str, tab: str, component: str):
+        """Log user actions to metrics table"""
+        try:
+            result = self.supabase.table("metrics").insert({
+                "created_at": datetime.now().isoformat(),
+                "action": action,
+                "tab": tab,
+                "component": component,
+                "session_id": st.session_state.session_id
+            }).execute()
+            return result
+        except Exception as e:
+            # Silently fail for metrics logging
+            pass
+
 class ErrorLogger:
-    def __init__(self, supabase_client: SupabaseConnection):
-        self.client = supabase_client
-        
+    def __init__(self, supabase: SupabaseConnection):
+        self.supabase = supabase
+    
     def log_error(self, error: Exception, context: dict = None):
-        self.client.table("error_logs").insert({
-            "timestamp": datetime.now().isoformat(),
-            "session_id": st.session_state.session_id,
-            "error_type": type(error).__name__,
-            "error_message": str(error),
-            "stack_trace": getattr(error, '__traceback__', None).__str__(),
-            "context": context
-        }).execute() 
+        """Log errors to errors table"""
+        try:
+            error_data = {
+                "created_at": datetime.now().isoformat(),
+                "error_message": str(error),
+                "error_type": type(error).__name__,
+                "traceback": str(error.__traceback__),
+                "session_id": st.session_state.session_id
+            }
+            
+            if context:
+                error_data["context"] = context
+                
+            result = self.supabase.table("errors").insert(error_data).execute()
+            return result
+        except Exception as e:
+            # If error logging fails, print to console as last resort
+            print(f"Error logging failed: {str(e)}") 

@@ -655,11 +655,13 @@ with tab2:
         st.info("Select filters and click 'Apply filters' to view the data")
 
     try:
-        # Your code
-        metrics.log_user_action("view_chart", "visualize", "cohorts")
+        # Only log metrics if the data is actually loaded
+        if st.session_state.period_data and st.session_state.period_data.get('results'):
+            metrics.log_user_action("view_chart", "visualize", "cohorts")
     except Exception as e:
         error_logger.log_error(e, {"tab": "visualize", "action": "view_chart"})
-        st.error("An error occurred. Our team has been notified.")
+        # Don't show error to user since metrics logging is non-critical
+        pass
 
 with tab3:
     # Create a column that's almost full width
