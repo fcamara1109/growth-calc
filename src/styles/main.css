@@ -1,0 +1,156 @@
+* {
+    font-family: 'JetBrains Mono', monospace !important;
+}
+
+[data-testid="stAppViewContainer"] {
+    background-color: #242424;
+    color: #a6ebc9;
+}
+
+.stApp {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Sidebar styling */
+[data-testid="stSidebar"] {
+    background-color: #242424;
+}
+
+/* Headers */
+h1, h2, h3, h4, h5, h6 {
+    color: #61ff7e !important;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Regular text */
+p, div, span, label {
+    font-size: 15px !important;
+}
+
+/* Metrics and KPI numbers */
+[data-testid="stMetricValue"] {
+    color: #62ab37 !important;
+}
+
+/* Charts background */
+[data-testid="stPlotlyChart"] > div {
+    background-color: #242424 !important;
+}
+
+/* Buttons */
+.stButton button {
+    background-color: #62ab37 !important;
+    color: #1a1a1a !important;
+    border: none !important;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.stButton button:hover {
+    background-color: #61ff7e !important;
+}
+
+/* File uploader */
+[data-testid="stFileUploader"] {
+    background-color: #242424;
+    padding: 1rem;
+    border-radius: 4px;
+}
+
+/* DataFrames */
+[data-testid="stTable"] {
+    background-color: #242424;
+}
+
+.dataframe {
+    font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* Text inputs and selectors */
+.stSelectbox select,
+.stTextInput input {
+    background-color: #242424 !important;
+    color: #a6ebc9 !important;
+    border-color: #62ab37 !important;
+}
+
+/* Add these rules to reduce top spacing */
+.block-container {
+    padding-top: 2rem !important;
+}
+
+/* Reduce space between title and tabs */
+h1 {
+    margin-bottom: 1rem !important;
+    padding-bottom: 0 !important;
+}
+
+/* Adjust tab spacing */
+.stTabs {
+    margin-top: 0 !important;
+}
+
+/* Style for the info note */
+.stInfo {
+    background-color: rgba(255, 165, 0, 0.1) !important;
+    color: #ffa500 !important;
+}
+
+/* Plotly specific font settings */
+.js-plotly-plot, 
+.plot-container,
+.plotly,
+.modebar-container,
+.svg-container,
+.xtick text,
+.ytick text,
+.gtitle,
+.annotation-text,
+.heatmap text {
+    font-family: 'JetBrains Mono', monospace !important;
+    font-weight: 400 !important;
+}
+
+/* Update header background */
+[data-testid="stHeader"] {
+    background-color: #242424 !important;
+}
+
+/* Tab styling */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 2rem;
+    background-color: #242424;
+}
+
+.stTabs [data-baseweb="tab"] {
+    height: 3rem;
+    color: #a6ebc9 !important;
+    background-color: transparent;
+}
+
+/* Active tab */
+.stTabs [data-baseweb="tab"][aria-selected="true"] {
+    color: #61ff7e !important;
+    background-color: transparent;
+    border-bottom: 2px solid #61ff7e !important;
+}
+
+/* Hover effect for tabs */
+.stTabs [data-baseweb="tab"]:hover {
+    color: #61ff7e !important;
+    background-color: rgba(97, 255, 126, 0.1);
+}
+
+/* Remove red indicator/selector */
+.stTabs [data-baseweb="tab-highlight"] {
+    background-color: transparent !important;
+}
+
+/* .stTabs [data-baseweb="tab-border"] {
+    display: none;
+} */
+
+/* Optional: if any red outline appears on focus */
+.stTabs [data-baseweb="tab"]:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}

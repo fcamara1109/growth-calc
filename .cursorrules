@@ -1,0 +1,96 @@
+Hi, my name is Felipe. 
+
+This is a Python project using Streamlit in my Mac. We'll also use Supabase to store the data.
+
+I'm trying to create a web app that allows users to upload a CSV file and then perform some visual analysis on the uploaded data. 
+
+Its a simple website, where the user will be able to upload a CSV file containing 4 variables:
+1. date
+2. id
+3. revenue
+4. user_id
+
+With that, some SQL queries are going to run and with streamlit we will plot a cohort graph, and some fancy timeline charts.
+
+# Supabase Integration Learnings with Streamlit
+
+## Connection Setup
+- Use `st.connection("supabase", type=SupabaseConnection)` for Streamlit-Supabase connection
+- Connection credentials go in `.streamlit/secrets.toml` with format:
+  - `[connections.supabase]`
+  - `SUPABASE_URL = "your-url"`
+  - `SUPABASE_KEY = "your-key"`
+
+## Database Operations
+- Tables must be created directly in Supabase SQL editor, not through the Python client
+- Use `.table()` instead of `.query()` for table operations
+- Use `execute_query()` helper function from st_supabase_connection for operations
+- Always set `ttl=0` to prevent caching issues
+- Don't use `execute_sql()` because it doesn't exists.
+- Don't use rpc, it doesn't work.
+- For complex queries, create a view in Supabase SQL editor instead of trying to chain operations in Python
+- Views can handle all the complex SQL logic including:
+  - Window functions
+  - Complex joins
+  - Date calculations
+  - Aggregations
+- Then use simple `.table("view_name").select("*").eq()` operations in Python
+
+## Dont's 
+- Can't create tables through Python client (use SQL Editor instead)
+- Can't use RPC with Streamlit's Supabase connection
+- Need to handle caching issues with Streamlit:
+  - Functions can't be serialized/pickled
+  - Supabase connection objects are unhashable
+- Be careful with function serialization in Streamlit context
+
+## Session Management
+- Add session_id column to tables that need session isolation
+- Use Streamlit's session_state to manage session IDs
+- Generate unique session IDs with uuid4()
+- Filter all queries by session_id to isolate data between users
+- Add clear functionality per session
+
+## Table Operations
+- Use `.select("*")` for retrieving data
+- Use `.upsert()` for inserting/updating data
+- Use `.delete()` for removing data
+- Use `.eq()` for equality conditions
+- Chain operations like: `.table("mytable").select("*").eq('column', 'value')`
+
+## Best Practices
+- Create tables with session management columns from the start
+- Always validate data before inserting
+- Handle exceptions for database operations
+- Consider cleanup strategies for old session data
+- Use descriptive table and column names
+
+## Common Pitfalls
+- Can't create tables through Python client
+- No direct SQL query execution through Python client
+- Need to handle session management explicitly
+- Must create proper table structure before app deployment
+
+## Required Dependencies
+- st-supabase-connection
+- pandas (for data handling)
+- uuid (for session management)
+
+## Maintenance
+- Consider setting up cron jobs for data cleanup
+- Monitor database size and session accumulation
+- Regular cleanup of old session data 
+
+## State Management with Streamlit
+- Store complex data in session_state when filters are applied
+- Use session_state to control when to fetch/display data
+- Use st.rerun() after updating session_state to refresh the page
+- Initialize all session_state variables at the start
+- Clear relevant session_state when clearing data
+
+## Filter Pattern
+- Create a view that handles the base query logic
+- Add date filters in Python using .gte() and .lte()
+- Store filter state in session_state
+- Only apply filters when explicitly requested (e.g., "Apply filters" button)
+- Consider default filter values for initial load 
