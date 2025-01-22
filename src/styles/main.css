@@ -154,3 +154,61 @@ h1 {
     outline: none !important;
     box-shadow: none !important;
 }
+
+/* Hide default file uploader text */
+.stFileUploader > section[data-testid="stFileUploadDropzone"] > div > span {
+    display: none !important;
+}
+
+/* Style the file uploader */
+[data-testid="stFileUploadDropzone"] {
+    background-color: #242424 !important;
+    border: 1px dashed #62ab37 !important;
+    color: #a6ebc9 !important;
+}
+
+/* Style the upload button */
+[data-testid="stFileUploadDropzone"] button {
+    background-color: #62ab37 !important;
+    color: #1a1a1a !important;
+    border: none !important;
+    font-family: 'JetBrains Mono', monospace !important;
+}
+
+[data-testid="stFileUploadDropzone"] button:hover {
+    background-color: #61ff7e !important;
+}
+
+/* Hide file size limit text - more specific selector */
+#tabs-bui72-tabpanel-0 .stHorizontalBlock .stColumn section div small,
+[data-testid="stFileUploadDropzone"] small,
+.stFileUploader small,
+div[data-testid="stFileUploadDropzone"] div small {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    position: absolute !important;
+    overflow: hidden !important;
+}
+
+/* Also try targeting the parent container */
+div[data-testid="stFileUploadDropzone"] div:has(> small) {
+    display: none !important;
+}
+
+/* And try targeting by text content */
+small:contains("Limit") {
+    display: none !important;
+}
+
+/* Override text content */
+#tabs-bui72-tabpanel-0 .stHorizontalBlock .stColumn section div small::before {
+    content: "" !important;
+    display: block !important;
+}
+
+#tabs-bui72-tabpanel-0 .stHorizontalBlock .stColumn section div small * {
+    display: none !important;
+}
