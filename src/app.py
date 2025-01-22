@@ -99,17 +99,6 @@ supabase = st.connection("supabase", type=SupabaseConnection)
 metrics = MetricsLogger(supabase)
 error_logger = ErrorLogger(supabase)
 
-# Move the metrics logging inside a function to ensure proper initialization
-def log_metrics(action: str, tab: str, component: str):
-    """Safely log metrics with proper initialization check"""
-    try:
-        if not hasattr(st, 'metrics_logger'):
-            st.metrics_logger = MetricsLogger(st.connection("supabase", type=SupabaseConnection))
-        st.metrics_logger.log_user_action(action, tab, component)
-    except Exception as e:
-        # Silently fail for metrics logging
-        pass
-
 with tab1:
     st.subheader("Upload Data")
     
@@ -668,7 +657,7 @@ with tab2:
     try:
         # Only log metrics if the data is actually loaded
         if st.session_state.period_data and st.session_state.period_data.get('results'):
-            log_metrics("view_chart", "visualize", "cohorts")
+            metrics.log_user_action("view_chart", "visualize", "cohorts")
     except Exception as e:
         error_logger.log_error(e, {"tab": "visualize", "action": "view_chart"})
         # Don't show error to user since metrics logging is non-critical
