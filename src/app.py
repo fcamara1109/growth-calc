@@ -67,7 +67,7 @@ if 'session_id' not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
 
 # Constants
-MAX_FILE_SIZE_MB = 20
+MAX_FILE_SIZE_MB = 10
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
 # Add credit text as footer
@@ -109,7 +109,7 @@ with tab1:
     with main_col1:
         st.markdown("##### ℹ️ Instructions")
         st.markdown("""
-            - Maximum file size: 20MB
+            - Maximum file size: 10MB
             - Required CSV columns: date, transaction id, revenue, user id
             - Filters only apply after clicking "Apply filters"
             - See example file below to know the expected format, or to test the app with it
