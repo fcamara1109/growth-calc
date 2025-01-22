@@ -142,8 +142,10 @@ with tab1:
             file_size = len(uploaded_file.getvalue())
             if file_size > MAX_FILE_SIZE_BYTES:
                 st.error(f"File size exceeds {MAX_FILE_SIZE_MB}MB limit. Please upload a smaller file.")
+                metrics.log_upload(file_size, 0, False, "File size exceeds limit")
             else:
                 try:
+                    start_time = time.time()
                     df = pd.read_csv(uploaded_file)
                     
                     # Clean up date format - remove time if it's all zeros
@@ -242,7 +244,11 @@ with tab1:
                                 except Exception as e:
                                     st.error(f"Error clearing data: {str(e)}")
                 
+                    processing_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+                    metrics.log_upload(file_size, processing_time, True)
+                
                 except Exception as e:
+                    metrics.log_upload(file_size, 0, False, str(e))
                     st.error(f"Error processing file: {str(e)}")
 
 with tab2:
